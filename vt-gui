@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# video-translator 图形界面启动器
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export TCL_LIBRARY="$DIR/runtime/python/lib/tcl8.6"
+export TK_LIBRARY="$DIR/runtime/python/lib/tk8.6"
+export LD_LIBRARY_PATH="$DIR/runtime/python/lib:${LD_LIBRARY_PATH:-}"
+exec "$DIR/.venv/bin/python" "$DIR/gui.py" "$@"

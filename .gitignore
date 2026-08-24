@@ -1,0 +1,18 @@
+# 密钥配置 - 绝不能上传!
+.env
+
+# 运行环境与解释器(体积大, 见README安装说明)
+.venv/
+runtime/
+gitport/
+
+# 运行产物
+last-run.log
+last-api-raw.txt
+__pycache__/
+*.pyc
+core.*
+*.segs.json
+
+# 系统杂项
+.DS_Store
