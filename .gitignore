@@ -1,5 +1,10 @@
 # 密钥配置 - 绝不能上传!
 .env
+.env.*
+!.env.example
+*.srt
+*.srt.backup-*.bak
+*.学习助手.html
 
 # 运行环境与解释器(体积大, 见README安装说明)
 .venv/
@@ -13,6 +18,13 @@ __pycache__/
 *.pyc
 core.*
 *.segs.json
+*.vt-transcript.json
+*.vt-progress.json
+.vt-cache/
+.upgrade-backup-*/
+test-artifacts/
+video-translator-v*.zip
+.gui-runtime/
 
 # 系统杂项
 .DS_Store

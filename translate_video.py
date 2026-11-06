@@ -16,6 +16,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from study_ai import enrich_chapters
+from study_pack import make_chapters, write_study_pack
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 
@@ -470,6 +473,10 @@ def main() -> None:
     ap.add_argument("--engine", default="auto", choices=["auto", "api", "local"],
                     help="翻译引擎: auto=有API Key用api否则local; api=大模型; local=离线")
     ap.add_argument("--fresh", action="store_true", help="忽略识别缓存强制重新识别")
+    ap.add_argument("--study", action="store_true",
+                    help="同时生成本地学习助手HTML（章节、字幕检索、时间戳笔记）")
+    ap.add_argument("--ai-outline", default="auto", choices=["auto", "on", "off"],
+                    help="AI提炼章节: auto=有API Key时启用; on=尝试启用; off=只用离线提炼")
     ap.add_argument("--start-sec", type=int, default=None,
                     help="只处理片段: 从第几秒开始(试看效果用)")
     ap.add_argument("--dur-sec", type=int, default=180,
@@ -522,6 +529,22 @@ def main() -> None:
             pairs = translate_segments(lang, segs)
         write_bilingual_srt(pairs, segs, out, args.zh_only)
         log(f"完成 -> {out}")
+        if args.study:
+            chapters = make_chapters(segs, pairs)
+            use_ai = args.ai_outline == "on" or (
+                args.ai_outline == "auto" and bool(API_KEY)
+            )
+            if use_ai and not API_KEY:
+                log("未配置 VT_API_KEY，AI章节提炼跳过，使用离线章节")
+            elif use_ai:
+                try:
+                    log(f"使用 {API_MODEL} 提炼章节标题、知识点和复习题 ...")
+                    chapters = enrich_chapters(chapters, segs, pairs, _chat)
+                    log("AI章节提炼完成")
+                except Exception as e:
+                    log(f"AI章节提炼失败，已自动使用离线章节: {e}")
+            study = write_study_pack(f, segs, pairs, chapters=chapters)
+            log(f"学习助手 -> {study}（浏览器打开即可使用）")
 
 
 if __name__ == "__main__":

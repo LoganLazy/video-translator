@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
-# video-translator 图形界面启动器
+# Independent translator GUI. Keep Tk separate from inference/study runtimes.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export TCL_LIBRARY="$DIR/runtime/python/lib/tcl8.6"
-export TK_LIBRARY="$DIR/runtime/python/lib/tk8.6"
-export LD_LIBRARY_PATH="$DIR/runtime/python/lib:${LD_LIBRARY_PATH:-}"
-exec "$DIR/.venv/bin/python" "$DIR/gui.py" "$@"
+if [ -d "$DIR/.gui-runtime/usr/lib/python3.11/tkinter" ]; then
+  export PYTHONPATH="$DIR/.gui-runtime/usr/lib/python3.11:$DIR/.gui-runtime/usr/lib/python3.11/lib-dynload${PYTHONPATH:+:$PYTHONPATH}"
+  export LD_LIBRARY_PATH="$DIR/.gui-runtime/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  export TCL_LIBRARY="$DIR/.gui-runtime/usr/share/tcltk/tcl8.6"
+  export TK_LIBRARY="$DIR/.gui-runtime/usr/share/tcltk/tk8.6"
+  export FONTCONFIG_FILE="$DIR/.gui-runtime/fonts.conf"
+  exec /usr/bin/python3 "$DIR/subtitle_gui.py" "$@"
+fi
+if python3 -c 'import tkinter' >/dev/null 2>&1; then
+  exec python3 "$DIR/subtitle_gui.py" "$@"
+fi
+echo '图形界面需要系统 Python Tk 支持（Debian/Ubuntu: python3-tk）；命令行仍可用 ./vt。' >&2
+exit 1

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""双fork守护式启动器: 脱离调用方会话, 在后台运行 translate_video."""
+"""双fork守护式启动器: 在后台运行独立字幕翻译入口."""
 import os
 import sys
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 PY = os.path.join(DIR, ".venv", "bin", "python")
-MAIN = os.path.join(DIR, "translate_video.py")
+MAIN = os.path.join(DIR, "subtitle_translator.py")
 
 if os.fork():
     sys.exit(0)

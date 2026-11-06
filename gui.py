@@ -22,7 +22,7 @@ class App:
         self.root = root
         self.q: queue.Queue = queue.Queue()
         self.proc: subprocess.Popen | None = None
-        root.title("影片中文字幕生成器")
+        root.title("视频学习助手 · 双语字幕")
         root.geometry("720x520")
         root.minsize(620, 460)
         self._build()
@@ -53,13 +53,15 @@ class App:
         ttk.Checkbutton(row, text="只要中文(不带原文)", variable=self.zh_only).pack(
             side="left"
         )
+        self.study = tk.BooleanVar(value=True)
+        ttk.Checkbutton(row, text="生成学习助手", variable=self.study).pack(side="left", padx=(12, 0))
 
         self.bar = ttk.Progressbar(self.root, mode="determinate")
         self.bar.pack(fill="x", **pad)
 
         btns = ttk.Frame(self.root)
         btns.pack(fill="x", **pad)
-        self.start_btn = ttk.Button(btns, text="开始生成", command=self.start)
+        self.start_btn = ttk.Button(btns, text="开始处理", command=self.start)
         self.start_btn.pack(side="left")
         self.stop_btn = ttk.Button(
             btns, text="停止", command=self.stop, state="disabled"
@@ -69,6 +71,10 @@ class App:
             btns, text="打开字幕文件夹", command=self.open_dir, state="disabled"
         )
         self.open_btn.pack(side="left")
+        self.study_btn = ttk.Button(
+            btns, text="打开学习助手", command=self.open_study, state="disabled"
+        )
+        self.study_btn.pack(side="left", padx=6)
 
         self.log = scrolledtext.ScrolledText(self.root, height=18, font=("monospace", 10))
         self.log.pack(fill="both", expand=True, padx=8, pady=(0, 8))
@@ -101,11 +107,14 @@ class App:
         ]
         if self.zh_only.get():
             cmd.append("--zh-only")
+        if self.study.get():
+            cmd.append("--study")
         self.log.delete("1.0", "end")
         self.bar.config(mode="indeterminate")
         self.bar.start(12)
         self.start_btn.config(state="disabled")
         self.stop_btn.config(state="normal")
+        self.study_btn.config(state="disabled")
         threading.Thread(target=self._run, args=(cmd,), daemon=True).start()
 
     def _run(self, cmd: list) -> None:
@@ -146,7 +155,11 @@ class App:
                     self.start_btn.config(state="normal")
                     self.stop_btn.config(state="disabled")
                     if payload == 0:
-                        self._append("全部完成 ✓ 字幕已生成在影片同目录")
+                        if self.study.get():
+                            self._append("全部完成 ✓ 字幕和学习助手已生成在影片同目录")
+                            self.study_btn.config(state="normal")
+                        else:
+                            self._append("全部完成 ✓ 字幕已生成在影片同目录")
                     else:
                         self._append("处理中断或失败, 见上方日志")
         except queue.Empty:
@@ -160,6 +173,14 @@ class App:
     def open_dir(self) -> None:
         if getattr(self, "files", None):
             subprocess.Popen(["xdg-open", str(self.files[0].parent)])
+
+    def open_study(self) -> None:
+        if getattr(self, "files", None):
+            page = self.files[0].with_name(f"{self.files[0].stem}.学习助手.html")
+            if page.exists():
+                subprocess.Popen(["xdg-open", str(page)])
+            else:
+                messagebox.showinfo("提示", "尚未找到学习助手页面，请先完成处理")
 
 
 if __name__ == "__main__":

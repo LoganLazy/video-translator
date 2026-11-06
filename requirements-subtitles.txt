@@ -1,0 +1,4 @@
+# Verified independent subtitle translator runtime (Python 3.11).
+faster-whisper==1.2.1
+argostranslate==1.11.0
+av==18.1.0
