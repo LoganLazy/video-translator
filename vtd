@@ -7,6 +7,10 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 PY = os.path.join(DIR, ".venv", "bin", "python")
 MAIN = os.path.join(DIR, "subtitle_translator.py")
 
+if not os.path.isfile(PY):
+    print(f"错误: 找不到 Python 运行环境 {PY}，请先按说明安装依赖", file=sys.stderr)
+    sys.exit(1)
+
 if os.fork():
     sys.exit(0)
 os.setsid()
