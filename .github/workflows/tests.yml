@@ -17,6 +17,6 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install numpy av==18.1.0
       - name: Core, local HTTP and study helper regressions
-        run: python -m unittest -v test_subtitle_translator test_subtitle_http test_study_pack
+        run: python -m unittest -v test_subtitle_translator test_subtitle_http test_study_pack test_translate_video
       - name: Command line entry
         run: python subtitle_translator.py --version
