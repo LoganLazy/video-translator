@@ -140,8 +140,22 @@ class App:
             self.proc = None
 
     def stop(self) -> None:
-        if self.proc:
-            self.proc.terminate()
+        process = self.proc
+        if process is None or process.poll() is not None:
+            return
+        try:
+            process.terminate()
+        except ProcessLookupError:
+            return
+        self.root.after(2500, lambda: self._kill_if_running(process))
+
+    @staticmethod
+    def _kill_if_running(process) -> None:
+        if process.poll() is None:
+            try:
+                process.kill()
+            except ProcessLookupError:
+                pass
 
     def _poll(self) -> None:
         try:
