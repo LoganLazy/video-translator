@@ -540,6 +540,28 @@ class TranslatorTests(unittest.TestCase):
         self.assertEqual(Path(installed).suffix, ".argosmodel")
         self.assertFalse(Path(installed).exists())
 
+    def test_api_chat_sends_browser_user_agent(self):
+        # Cloudflare-fronted API hosts reject the default
+        # "Python-urllib/x.y" User-Agent with HTTP 403 (error 1010), so
+        # the chat request must present a browser UA, like the model
+        # download already does.
+        # (Reproduced live: Python-urllib UA -> 403, curl UA -> 200.)
+        body = json.dumps({"choices": [{"message": {"content": "你好"}}]}).encode()
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.headers.get.return_value = None
+        response.read.return_value = body
+        opener = MagicMock()
+        opener.open.return_value = response
+        settings = vt.Settings(key="test-key", url="https://example.invalid/v1/chat/completions",
+                               model="test-model")
+        with patch("urllib.request.build_opener", return_value=opener):
+            self.assertEqual(vt.chat(settings, [{"role": "user", "content": "Hello"}]), "你好")
+        request = opener.open.call_args[0][0]
+        user_agent = request.get_header("User-agent")
+        self.assertTrue(user_agent.startswith("Mozilla/5.0"), user_agent)
+        self.assertNotIn("Python-urllib", user_agent)
+
     def test_cli_publishes_review_markers_and_reports_incomplete_translation(self):
         path = self.wave()
         model = Mock()
