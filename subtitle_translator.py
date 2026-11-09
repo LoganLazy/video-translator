@@ -355,11 +355,26 @@ def model_url(url):
     return url
 
 
+# Model hosts fronted by Cloudflare (argos-net.com) reject the default
+# "Python-urllib/x.y" User-Agent with HTTP 403, so the model index fetch
+# and the model download must present a browser User-Agent instead.
+# (Verified live: bare urlopen -> 403, curl -> 200 on the same URL.)
+_BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+)
+
+
+def _http_get(url, timeout):
+    request = urllib.request.Request(url, headers={"User-Agent": _BROWSER_USER_AGENT})
+    return urllib.request.urlopen(request, timeout=timeout)
+
+
 def get_model_index():
     url = "https://raw.githubusercontent.com/argosopentech/argospm-index/main/index.json"
     for target in dict.fromkeys([url, model_url(url)]):
         try:
-            with urllib.request.urlopen(target, timeout=30) as response:
+            with _http_get(target, timeout=30) as response:
                 data = response.read(8 * 1024 * 1024 + 1)
                 if len(data) > 8 * 1024 * 1024:
                     continue
@@ -399,7 +414,7 @@ def ensure_chain(language):
             for address in dict.fromkeys([url, model_url(url)]):
                 fd, filename = tempfile.mkstemp(prefix="vt-model-", suffix=".argosmodel")
                 try:
-                    with os.fdopen(fd, "wb") as output, urllib.request.urlopen(address, timeout=60) as response:
+                    with os.fdopen(fd, "wb") as output, _http_get(address, timeout=60) as response:
                         total = 0
                         while True:
                             chunk = response.read(1024 * 1024)

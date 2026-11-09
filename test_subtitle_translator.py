@@ -9,7 +9,7 @@ import wave
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import subtitle_translator as vt
 
@@ -505,6 +505,40 @@ class TranslatorTests(unittest.TestCase):
         translator.translate.side_effect = RuntimeError("model failure")
         with patch.object(vt, "ensure_chain"), patch.object(vt, "_argos", (package, translator)), self.assertRaises(RuntimeError):
             vt.local_translate(["test"], "en")
+
+    def test_model_downloads_send_browser_user_agent(self):
+        # Cloudflare-fronted model hosts (argos-net.com) reject the default
+        # "Python-urllib/x.y" User-Agent with HTTP 403, so both the model
+        # index fetch and the model file download must present a browser UA.
+        # (Reproduced live: bare urlopen -> 403, curl -> 200, same URL.)
+        def fake_response(body):
+            response = MagicMock()
+            response.__enter__.return_value = io.BytesIO(body)
+            return response
+
+        index = [{"from_code": "en", "to_code": "zh", "package_version": "1.9",
+                  "links": ["https://argos-net.com/v1/translate-en_zh-1_9.argosmodel"]}]
+        with patch("urllib.request.urlopen", return_value=fake_response(json.dumps(index).encode())) as urlopen:
+            self.assertEqual(vt.get_model_index(), index)
+        request = urlopen.call_args[0][0]
+        user_agent = request.get_header("User-agent")
+        self.assertTrue(user_agent.startswith("Mozilla/5.0"), user_agent)
+        self.assertNotIn("Python-urllib", user_agent)
+
+        package, translator = Mock(), Mock()
+        package.get_installed_packages.return_value = []
+        with patch.object(vt, "argos_modules", return_value=(package, translator)), \
+                patch.object(vt, "get_model_index", return_value=index), \
+                patch("urllib.request.urlopen", return_value=fake_response(b"fake-model-bytes")) as urlopen:
+            vt.ensure_chain("en")
+        request = urlopen.call_args[0][0]
+        user_agent = request.get_header("User-agent")
+        self.assertTrue(user_agent.startswith("Mozilla/5.0"), user_agent)
+        self.assertNotIn("Python-urllib", user_agent)
+        package.install_from_path.assert_called_once()
+        installed = package.install_from_path.call_args[0][0]
+        self.assertEqual(Path(installed).suffix, ".argosmodel")
+        self.assertFalse(Path(installed).exists())
 
     def test_cli_publishes_review_markers_and_reports_incomplete_translation(self):
         path = self.wave()
