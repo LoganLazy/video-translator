@@ -15,6 +15,16 @@ ROOT = Path(__file__).resolve().parent
 ENGINES = [("auto", "自动（API 失败可本地兜底）"), ("api", "仅 API（失败保留进度）"), ("local", "仅本地翻译")]
 
 
+def _opener_failed(proc):
+    """True when a folder opener exited with a non-zero status.
+
+    Only a real non-zero exit code counts: a mocked proc returns a
+    non-int from poll(), which must not trigger the fallback dialog.
+    """
+    code = proc.poll()
+    return isinstance(code, int) and code != 0
+
+
 class App:
     def __init__(self, root):
         self.root, self.proc, self.cancelled = root, None, False
@@ -236,9 +246,21 @@ class App:
         if self.files:
             folder = Path(self.output_dir.get().strip()).expanduser().resolve() if self.output_dir.get().strip() else self.files[0].parent
             try:
-                subprocess.Popen(["xdg-open", str(folder)])
+                proc = subprocess.Popen(["xdg-open", str(folder)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except OSError:
-                messagebox.showinfo("字幕文件夹", str(folder))
+                self._show_folder_fallback(folder)
+                return
+            # xdg-open exits right away when no file manager can take the
+            # folder, but Popen alone cannot see that failure, so check the
+            # exit code shortly after instead of blocking the UI.
+            self.root.after(1500, lambda: self._check_open_dir(proc, folder))
+
+    def _check_open_dir(self, proc, folder):
+        if _opener_failed(proc):
+            self._show_folder_fallback(folder)
+
+    def _show_folder_fallback(self, folder):
+        messagebox.showinfo("无法打开字幕文件夹", f"系统没有可用的文件管理器，字幕保存在：\n{folder}")
 
 
 if __name__ == "__main__":
