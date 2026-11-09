@@ -258,6 +258,7 @@ def chat(settings, messages):
     payload = json.dumps({"model": settings.model, "messages": messages, "temperature": 0.2}, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(settings.url, data=payload, method="POST", headers={
         "Content-Type": "application/json", "Authorization": "Bearer " + settings.key,
+        "User-Agent": _BROWSER_USER_AGENT,
     })
     try:
         with urllib.request.build_opener(NoRedirect).open(request, timeout=settings.timeout) as response:
@@ -355,10 +356,11 @@ def model_url(url):
     return url
 
 
-# Model hosts fronted by Cloudflare (argos-net.com) reject the default
-# "Python-urllib/x.y" User-Agent with HTTP 403, so the model index fetch
-# and the model download must present a browser User-Agent instead.
-# (Verified live: bare urlopen -> 403, curl -> 200 on the same URL.)
+# Cloudflare-fronted hosts reject the default "Python-urllib/x.y"
+# User-Agent with HTTP 403 (error 1010), so every outbound request
+# this tool makes — the model index fetch, the model download, and the
+# API chat request — must present a browser User-Agent instead.
+# (Verified live: bare urlopen / Python-urllib UA -> 403, curl UA -> 200.)
 _BROWSER_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
