@@ -11,7 +11,7 @@ import tempfile
 import time
 import tkinter as tk
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from subtitle_gui import App, VERSION
 from subtitle_translator import result_path
@@ -80,6 +80,15 @@ def main():
             with patch('subtitle_gui.subprocess.Popen') as opener:
                 app.open_dir()
             check('open folder follows chosen destination', opener.call_args.args[0] == ['xdg-open', str(destination)])
+            with patch('subtitle_gui.messagebox.showinfo') as notice:
+                app._check_open_dir(Mock(poll=lambda: 1), destination)
+            check('failed folder opener shows the folder path', notice.called and str(destination) in notice.call_args.args[1])
+            with patch('subtitle_gui.messagebox.showinfo') as notice:
+                app._check_open_dir(Mock(poll=lambda: 0), destination)
+            check('successful folder opener stays silent', not notice.called)
+            with patch('subtitle_gui.subprocess.Popen', side_effect=OSError('no xdg-open')), patch('subtitle_gui.messagebox.showinfo') as notice:
+                app.open_dir()
+            check('missing folder opener shows the folder path', notice.called and str(destination) in notice.call_args.args[1])
             check('controls restored after completion', str(app.model['state']) == 'readonly' and str(app.start_button['state']) == 'normal')
             before = subtitle.read_bytes()
             app.start()
